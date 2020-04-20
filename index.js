@@ -453,8 +453,84 @@ var tapLiveWorkerHandleEmitListener = new TapTalkWebWorker(() => {
 	}
 
 	self.addEventListener('message', e => {
-		let handleUpdateMessage = (message, rooms) => {
-			let _rooms = rooms;
+        let setRoomListLastMessage = (user, message, rooms, action = null) => {
+			var user = user;
+			let tapTalkRoomListHashmap = e.data.tapTalkRoomListHashmap;
+			let tapTalkRooms = rooms;
+
+			let data = {
+				lastMessage: {},
+				unreadCount: 0
+			}
+	
+			let unreadCounter = () => {
+				if(tapTalkRoomListHashmap[message.room.roomID]) {
+					let count = tapTalkRoomListHashmap[message.room.roomID].unreadCount;
+	
+					if(!message.isRead) {
+						if(user !== message.user.userID) {
+							if(tapTalkRooms[message.room.roomID].messages[message.localID]) {
+								count = count + 1;
+								tapTalkRoomListHashmap[message.room.roomID].unreadCount = count;
+							}
+						}
+					}else {
+						if(count !== 0) {
+							if(tapTalkRooms[message.room.roomID].messages[message.localID]) {
+								// count = count - 1;
+								count = 0;
+								tapTalkRoomListHashmap[message.room.roomID].unreadCount = count;
+							}
+						}
+					}
+				}
+			}
+	
+			if(!message.isHidden) {
+				//new emit action
+				if(action === 'new emit') {
+					if(!tapTalkRoomListHashmap[message.room.roomID]) {
+						data.lastMessage = message;
+						data.unreadCount = (!message.isRead && user !== message.user.userID) ? 1 : 0;
+                        let newMessageObject = {};
+                        newMessageObject[message.room.roomID] = data; 
+						tapTalkRoomListHashmap = Object.assign(newMessageObject, tapTalkRoomListHashmap);
+					}else {
+						//relocate current room to first index
+						unreadCounter();
+						let temporaryRoomList = tapTalkRoomListHashmap[message.room.roomID];
+	
+						if((temporaryRoomList.lastMessage.created !== message.created)) {
+							temporaryRoomList.lastMessage = message;
+						}
+		
+						// delete tapTalkRoomListHashmap[message.room.roomID];
+                        let newMessageObject = {};
+                        newMessageObject[message.room.roomID] = temporaryRoomList; 
+						tapTalkRoomListHashmap = Object.assign(newMessageObject, tapTalkRoomListHashmap);
+					}
+				}
+				//new emit action
+	
+				//update emit action
+				if(action === 'update emit') {
+					if((tapTalkRoomListHashmap[message.room.roomID].lastMessage.localID === message.localID)) {
+						tapTalkRoomListHashmap[message.room.roomID].lastMessage = message;
+					}
+					
+					if(message.isRead) {
+						unreadCounter();
+					}
+				}
+				//update emit action
+			}
+			
+			return tapTalkRoomListHashmap;
+        }
+        
+		let handleUpdateMessage = (activeUser, message, rooms) => {
+            let _rooms = rooms;
+            let user = activeUser;
 
             if(_rooms[message.room.roomID]) {
 				if(!_rooms[message.room.roomID].messages[message.localID]) {
@@ -472,7 +548,8 @@ var tapLiveWorkerHandleEmitListener = new TapTalkWebWorker(() => {
 			self.postMessage({
 				type: 'update',
 				message: message,
-				tapTalkRooms: _rooms
+				tapTalkRooms: _rooms,
+                tapTalkRoomListHashmap: setRoomListLastMessage(user, message, _rooms, 'update emit')
 			})
 		}
 
@@ -554,7 +631,8 @@ var tapLiveWorkerHandleEmitListener = new TapTalkWebWorker(() => {
 				type: 'new',
 				markMessageAsDelivered: markMessageAsDelivered,
 				message: message,
-				tapTalkRooms: _rooms
+                tapTalkRooms: _rooms,
+                tapTalkRoomListHashmap: setRoomListLastMessage(user, message, _rooms, 'new emit')
 			})
 		}
 
@@ -565,7 +643,7 @@ var tapLiveWorkerHandleEmitListener = new TapTalkWebWorker(() => {
 					break;
 		
 				case "chat/updateMessage":
-					handleUpdateMessage(e.data.message, e.data.tapTalkRooms)
+					handleUpdateMessage(e.data.activeUser, e.data.message, e.data.tapTalkRooms)
 					break;
 			}
 		}
@@ -596,7 +674,8 @@ tapLiveWorkerHandleEmitListener.addEventListener('message', e => {
 				}
 			}
             
-			module.exports.tapCoreRoomListManager.setRoomListLastMessage(e.data.message, 'new emit');
+            // module.exports.tapCoreRoomListManager.setRoomListLastMessage(e.data.message, 'new emit');
+            tapTalkRoomListHashmap = e.data.tapTalkRoomListHashmap;
 
             _tapTalkWebWorkerEmitQueue.finishWebWorkerEmitQueue();
 
@@ -618,7 +697,8 @@ tapLiveWorkerHandleEmitListener.addEventListener('message', e => {
 				}
 			}
             
-			module.exports.tapCoreRoomListManager.setRoomListLastMessage(e.data.message, 'update emit');
+            // module.exports.tapCoreRoomListManager.setRoomListLastMessage(e.data.message, 'update emit');
+            tapTalkRoomListHashmap = e.data.tapTalkRoomListHashmap;
             
             _tapTalkWebWorkerEmitQueue.finishWebWorkerEmitQueue();
 
@@ -649,6 +729,7 @@ class TapTalkWebWorkerEmitQueue {
 	runWebWorkerEmitQueue() {
 		if(this.arrayOfWebWorkerEmitQueue.length > 0) {
             this.arrayOfWebWorkerEmitQueue[0].tapTalkRooms = tapTalkRooms;
+            this.arrayOfWebWorkerEmitQueue[0].tapTalkRoomListHashmap = tapTalkRoomListHashmap;
 			tapLiveWorkerHandleEmitListener.postMessage(this.arrayOfWebWorkerEmitQueue[0]);
 		}else {
 			return;
@@ -1370,6 +1451,7 @@ exports.tapCoreRoomListManager = {
 			}
 			//first load roomlist
 
+            /*
 			//new emit action
 			if(action === 'new emit') {
 				if(!tapTalkRoomListHashmap[message.room.roomID]) {
@@ -1402,7 +1484,8 @@ exports.tapCoreRoomListManager = {
 					unreadCounter();
 				}
 			}
-			//update emit action
+            //update emit action
+            */
 		}
     },
     
