@@ -1583,7 +1583,7 @@ exports.tapCoreRoomListManager = {
                             isNeedToCallApiUpdateRoomList = false;
                             
                             _this.tapCoreMessageManager.markMessageAsDelivered(messageIDs);
-							
+                            console.log('tapTalkRoomListHashmap', tapTalkRoomListHashmap)
                             callback.onSuccess(tapTalkRoomListHashmap);
 						}else {
 							if(response.error.code === "40104") {
@@ -2260,7 +2260,27 @@ exports.tapCoreMessageManager  = {
 		}
 
 		// tapTalkEmitMessageQueue
-	},
+    },
+    
+    sendTextMessageWithoutEmit : (messageBody, room, callback) => {
+        if(this.taptalk.isAuthenticated()) {
+            this.tapCoreMessageManager.constructTapTalkMessageModel(messageBody, room, CHAT_MESSAGE_TYPE_TEXT, "");
+
+            let _message = {...MESSAGE_MODEL};
+
+            _message.body = messageBody;
+            
+            if(tapTalkRooms[_message.room.roomID]) {
+                tapTalkRoomListHashmap[_message.room.roomID].lastMessage = _message;
+				tapTalkRoomListHashmap = Object.assign({[_message.room.roomID]: tapTalkRoomListHashmap[_message.room.roomID]}, tapTalkRoomListHashmap);
+                tapTalkRooms[_message.room.roomID].messages = Object.assign({[_message.localID]: _message}, tapTalkRooms[_message.room.roomID].messages);
+            }else {
+                this.tapCoreMessageManager.pushNewRoom(_message);
+            }
+
+            callback(_message);
+        }
+    },
 
     sendTextMessage : (messageBody, room, callback) => {
         if(this.taptalk.isAuthenticated()) {
@@ -2270,9 +2290,7 @@ exports.tapCoreMessageManager  = {
                 eventName: SOCKET_NEW_MESSAGE,
                 data: MESSAGE_MODEL
             };
-            
-            // tapEmitMsgQueue.pushEmitQueue(JSON.stringify(emitData));
-
+                    
             let _message = {...MESSAGE_MODEL};
 
             _message.body = messageBody;
@@ -2287,7 +2305,7 @@ exports.tapCoreMessageManager  = {
                 this.tapCoreMessageManager.pushNewRoom(_message);
             }
 
-            callback(emitData);
+            callback(_message);
                 
             tapEmitMsgQueue.pushEmitQueue(JSON.stringify(emitData));
         }
