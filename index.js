@@ -3167,14 +3167,14 @@ exports.tapCoreContactManager  = {
                 .then(function (response) {
                     if(response.error.code === "") {
                         userData.user = response.data.user;
-                        localStorage.setItem('TapTalk.UserData', encryptKey(JSON.stringify(userData), KEY_PASSWORD_ENCRYPTOR));
+                        // localStorage.setItem('TapTalk.UserData', encryptKey(JSON.stringify(userData), KEY_PASSWORD_ENCRYPTOR));
 
-                        callback(response.data, null);
+                        callback.onSuccess(response.data);
                     }else {
                         if(response.error.code === "40104") {
                             _this.taptalk.refreshAccessToken(() => _this.tapCoreContactManager.getUserDataWithUserID(userId, null))
                         }else {
-                            callback(null, response.error);
+                            callback.onError(response.error.code, response.error.message);
                         }
                     }
                 })
@@ -3196,12 +3196,12 @@ exports.tapCoreContactManager  = {
             doXMLHTTPRequest('POST', authenticationHeader, url, {xcUserID: xcUserId})
                 .then(function (response) {
                     if(response.error.code === "") {
-                        callback(response.data, null);
+                        callback.onSuccess(response.data);
                     }else {
                         if(response.error.code === "40104") {
                             _this.taptalk.refreshAccessToken(() => _this.tapCoreContactManager.getUserDataWithXCUserID(xcUserId, callback));
                         }else {
-                            callback(null, response.error);
+                            callback.onError(response.error.code, response.error.message);
                         }
                     }
                 })
