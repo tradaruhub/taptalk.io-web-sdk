@@ -1747,6 +1747,94 @@ exports.tapCoreChatRoomManager = {
     
     addMessageListener : (callback) => {	
         tapMessageListeners.push(callback);
+    },
+    
+    generateRoom : (user, callback = null, error = null) => {
+        let result = {
+            success: "",
+            error: {},
+            room: {
+				color: "",
+				deleted: 0,
+				imageURL: {thumbnail: "", fullsize: ""},
+				isDeleted: false,
+				isLocked: false,
+				lockedTime: 0,
+				name: "",
+				roomID: "",
+				type: ROOM_TYPE.PERSONAL,
+				xcRoomID: ""
+			}
+		}
+
+		let otherUser = user;
+		let myUser = this.taptalk.getTaptalkActiveUser();
+		let roomID = "";
+
+		if(error === null) {
+			result.success = true;
+	
+			if(parseInt(myUser.userID) > parseInt(otherUser.userID)) {
+				roomID = parseInt(otherUser.userID)+"-"+parseInt(myUser.userID);
+			}else {
+				roomID = parseInt(myUser.userID)+"-"+parseInt(otherUser.userID);
+			}
+	
+			result.room.roomID = roomID;
+			result.room.name = otherUser.fullname;
+			result.room.imageURL = otherUser.imageURL;
+		}else {
+			result.success = false;
+			result.error = error;
+        }
+
+        if(callback !== null) {
+			callback(result);
+		}else {
+			return result;
+		}  
+	},
+
+	createRoomWithOtherUser : (userModel) => {
+		return this.tapCoreChatRoomManager.generateRoom(userModel);
+    },
+
+    createRoomWithUserID : (userID, callback) => {
+        this.tapCoreContactManager.getUserDataWithUserID(userID, {
+			onSuccess: (user) => {
+				this.tapCoreChatRoomManager.generateRoom(user.user, (response) => {
+                    callback(response);
+                });
+			}, 
+			onError: (errorCode, errorMessage) => {
+				this.tapCoreChatRoomManager.generateRoom(null, (response) => {
+                    callback(response);
+                },
+                {
+					code: errorCode,
+					message: errorMessage
+				});
+			}
+		});
+    },
+
+    createRoomWithXCUserID : (xcUserID, callback) => {
+		this.tapCoreContactManager.getUserDataWithXCUserID(xcUserID, {
+			onSuccess: (user) => {
+				this.tapCoreChatRoomManager.generateRoom(user.user, (response) => {
+                    callback(response);
+                });
+			}, 
+			onError: (errorCode, errorMessage) => {
+				this.tapCoreChatRoomManager.generateRoom(null, (response) => {
+                    callback(response);
+                },
+                {
+					code: errorCode,
+					message: errorMessage
+				});
+			}
+		});
 	},
 
     createGroupChatRoom : (groupName, participantList, callback) => {
