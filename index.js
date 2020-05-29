@@ -2325,7 +2325,7 @@ exports.tapCoreMessageManager  = {
 			unreadCount: 0
 		}
 		let newTaptalkRoom = {
-			message: {},
+			messages: {},
 			hasMore: true,
 			lastUpdated: 0
 		};
