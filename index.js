@@ -1491,7 +1491,7 @@ exports.tapCoreRoomListManager = {
     },
     
     updateRoomsExist: (message) => {
-		let decryptedMessage = decryptKey(message.body, message.localID);
+        let decryptedMessage = decryptKey(message.body, message.localID);
 
 		if(!tapTalkRooms[message.room.roomID]["messages"].localID) {
 			tapTalkRooms[message.room.roomID]["messages"][message.localID] = message;
@@ -2332,7 +2332,7 @@ exports.tapCoreMessageManager  = {
 
 		tapTalkRooms = Object.assign({[messageModel.room.roomID]: newTaptalkRoom}, tapTalkRooms);
 
-		tapTalkRooms[messageModel.room.roomID].message[messageModel.localID] = messageModel;
+		tapTalkRooms[messageModel.room.roomID].messages[messageModel.localID] = messageModel;
 
 		newRoomListHashmap.lastMessage = messageModel;
 		newRoomListHashmap.unreadCount = (!messageModel.isRead && user !== messageModel.user.userID) ? 1 : 0;
