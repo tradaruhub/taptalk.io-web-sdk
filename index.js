@@ -1,4 +1,4 @@
-/* 24-07-2020 12:30  v1.6.1*/
+/* 24-07-2020 13:53  v1.6.2*/
 
 var define, CryptoJS;
 var crypto = require('crypto');
@@ -1402,6 +1402,50 @@ exports.tapCoreRoomListManager = {
 		}
     },
 
+    getRoomByXcID : (xcRoomID, callback) => {
+		let _this = this;
+        let url = `${baseApiUrl}/v1/client/room/get_by_xc_room_id`;
+        
+        if(_this.taptalk.isAuthenticated()) {
+            let userData = getLocalStorageObject('TapTalk.UserData');
+            authenticationHeader["Authorization"] = `Bearer ${userData.accessToken}`;
+
+            doXMLHTTPRequest('POST', authenticationHeader, url, {xcRoomID: xcRoomID})
+                .then(function (response) {
+                    if(response.error.code === "") {
+                        callback.onSuccess(response.data);
+                    }else {
+                        _this.taptalk.checkErrorResponse(response, callback, () => {
+                            _this.tapCoreChatRoomManager.getRoomByXcID(xcRoomID, callback)
+                        });
+                    }
+                })
+                .catch(function (err) {
+                    console.error('there was an error!', err);
+                });
+        }
+    },
+    
+    getPersonalChatRoomWithUser : (userModel) => {
+        let room = {};
+        let _userModel = userModel;
+        let currentActiveUser = this.taptalk.getTaptalkActiveUser();
+        let roomID = "";
+
+        if(_userModel.userID < currentActiveUser) {
+            roomID = _userModel.userID+"-"+currentActiveUser.userID;
+        }else {
+            roomID = currentActiveUser.userID+"-"+_userModel.userID;
+        }
+
+        room.roomID = roomID;
+        room.name = currentActiveUser.fullname;
+        room.imageURL = currentActiveUser.imageURL;
+        room.type = ROOM_TYPE.PERSONAL;
+
+        return room;
+    },
+
     getUserByIdFromApi : (userId, callback) => {
         let url = `${baseApiUrl}/v1/client/user/get_by_id`;
         let _this = this;
@@ -1679,30 +1723,6 @@ exports.tapCoreChatRoomManager = {
                 });
         }
     },
-
-    getRoomByXcID : (xcRoomID, callback) => {
-		let _this = this;
-        let url = `${baseApiUrl}/v1/client/room/get_by_xc_room_id`;
-        
-        if(_this.taptalk.isAuthenticated()) {
-            let userData = getLocalStorageObject('TapTalk.UserData');
-            authenticationHeader["Authorization"] = `Bearer ${userData.accessToken}`;
-
-            doXMLHTTPRequest('POST', authenticationHeader, url, {xcRoomID: xcRoomID})
-                .then(function (response) {
-                    if(response.error.code === "") {
-                        callback.onSuccess(response.data);
-                    }else {
-                        _this.taptalk.checkErrorResponse(response, callback, () => {
-                            _this.tapCoreChatRoomManager.getRoomByXcID(xcRoomID, callback)
-                        });
-                    }
-                })
-                .catch(function (err) {
-                    console.error('there was an error!', err);
-                });
-        }
-	},
 
     updateGroupChatRoomDetails : (groupId, groupName, callback) => {
         let url = `${baseApiUrl}/v1/client/room/update`;
@@ -2005,6 +2025,25 @@ exports.tapCoreMessageManager  = {
         this.tapCoreMessageManager.constructMessageStatus(false, false, false, false);
     },
 
+    constructTapTalkProductModelWithProductID : (id, name, currency, price, rating, weight, description, imageUrl, buttonOption1Text, buttonOption2Text, buttonOption1Color, buttonOption2Color) => {
+        let data = {
+            id: id,
+            name: name, 
+            currency: currency,
+            price: price,
+            rating: rating,
+            weight: weight,
+            description: description,
+            imageUrl: imageUrl,
+            buttonOption1Text: buttonOption1Text, 
+            buttonOption2Text: buttonOption2Text, 
+            buttonOption1Color: buttonOption1Color, 
+            buttonOption2Color: buttonOption2Color
+        }
+        
+        return data;
+    },
+
     constructMessageStatus : (isSending, isDelivered, isRead, isDeleted) => {
         MESSAGE_MODEL["isSending"] = isSending;
         MESSAGE_MODEL["isDelivered"] = isDelivered;
@@ -2067,6 +2106,36 @@ exports.tapCoreMessageManager  = {
             tapTalkRooms[_message.room.roomID].messages = Object.assign({[_message.localID]: _message}, tapTalkRooms[_message.room.roomID].messages);
         }else {
             this.tapCoreMessageManager.pushNewRoom(_message);
+        }
+    },
+
+    sendCustomMessage : (body, data, messageType, room, callback) => {
+        if(this.taptalk.isAuthenticated()) {
+            this.tapCoreMessageManager.constructTapTalkMessageModel(body, room, messageType, data);
+
+            let emitData = {
+                eventName: SOCKET_NEW_MESSAGE,
+                data: MESSAGE_MODEL
+            };
+                    
+            let _message = {...MESSAGE_MODEL};
+
+            _message.body = body;
+            _message.data = data;
+        
+            this.tapCoreMessageManager.pushToTapTalkEmitMessageQueue(_message);
+
+            this.tapCoreMessageManager.pushNewMessageToRoomsAndChangeLastMessage(_message);
+
+            callback(_message);
+                
+            tapEmitMsgQueue.pushEmitQueue(JSON.stringify(emitData));
+        }
+    },
+
+    sendProductMessageWithProductArray : (arrayOfProduct, room, callback) => {
+        if(this.taptalk.isAuthenticated()) {
+            this.tapCoreMessageManager.sendCustomMessage("Product List", {items: arrayOfProduct}, 2001, room, callback);
         }
     },
 
