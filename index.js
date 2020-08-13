@@ -348,10 +348,10 @@ function doXMLHTTPRequestToBase64(method, header, url, data, message, onProgress
 }
 
 function doXMLHTTPRequestUpload(method, header, url, data, onProgress) {
-	let sendProgressUpload = (oEvent) => {
+	let sendProgressUpload = async (oEvent) => {
 		if (oEvent.lengthComputable) {
-		  var percentComplete = oEvent.loaded / oEvent.total * 100;
-		  onProgress(Math.round(percentComplete * 10) / 10, oEvent.loaded);
+          var percentComplete = oEvent.loaded / oEvent.total * 100;
+          onProgress(Math.round(percentComplete * 10) / 10, oEvent.loaded);
 		}
 	}
 
