@@ -1,4 +1,4 @@
-/* 24-07-2020 13:53  v1.6.2*/
+/* 14-08-2020 13:50  v1.8.1*/
 
 var define, CryptoJS;
 var crypto = require('crypto');
