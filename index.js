@@ -350,8 +350,11 @@ function doXMLHTTPRequestToBase64(method, header, url, data, message, onProgress
 function doXMLHTTPRequestUpload(method, header, url, data, onProgress) {
 	let sendProgressUpload = async (oEvent) => {
 		if (oEvent.lengthComputable) {
-          var percentComplete = oEvent.loaded / oEvent.total * 100;
-          onProgress(Math.round(percentComplete * 10) / 10, oEvent.loaded);
+          var percentComplete = Math.round((oEvent.loaded / oEvent.total * 100) * 10) / 10;
+          onProgress(percentComplete, oEvent.loaded);
+          if(percentComplete === 100) {
+              tapUplQueue.processNext();
+          }
 		}
 	}
 
@@ -2261,7 +2264,6 @@ exports.tapCoreMessageManager  = {
         if(_this.taptalk.isAuthenticated()) {
             let userData = getLocalStorageObject('TapTalk.UserData');
             authenticationHeader["Authorization"] = `Bearer ${userData.accessToken}`;
-
             doXMLHTTPRequestUpload('POST', authenticationHeader, url, uploadData, callback.onProgress)
                 .then(function (response) {
                     if(response.error.code === "") {
@@ -2350,7 +2352,7 @@ exports.tapCoreMessageManager  = {
 
                     callback.onStart(_message);
                     
-                    _this.tapCoreMessageManager.uploadChatFile(uploadData, {
+                    tapUplQueue.addToQueue(_message.localID, uploadData, {
                         onProgress: (percentage, bytes) => {
                             callback.onProgress(currentLocalID, percentage, bytes);
                         },
@@ -2499,7 +2501,7 @@ exports.tapCoreMessageManager  = {
                 
                 callback.onStart(_message);
         
-                _this.tapCoreMessageManager.uploadChatFile(uploadData, {
+                tapUplQueue.addToQueue(_message.localID, uploadData, {
                     onProgress: (percentage, bytes) => {
                         callback.onProgress(currentLocalID, percentage, bytes);
                     },
@@ -2615,7 +2617,7 @@ exports.tapCoreMessageManager  = {
 
             callback.onStart(_message);
 
-            this.tapCoreMessageManager.uploadChatFile(uploadData, {
+            tapUplQueue.addToQueue(_message.localID, uploadData, {
                 onProgress: (percentage, bytes) => {
                     callback.onProgress(currentLocalID, percentage, bytes);
                 },
@@ -2944,6 +2946,58 @@ exports.tapCoreMessageManager  = {
         }
     }
 }
+
+//queue upload file
+class TapUploadQueue {
+    constructor() {
+        this.queue = [];
+        this.isRunning = false;
+        this.callback = null;
+    }
+    
+    setCallback(callback) {
+        if (typeof(callback) !== "function") {
+            throw new Error("callback must be function");
+        }
+        this.callback = callback;
+    }
+    
+    addToQueue(localID, data, callback) {
+        let generateNewUploadObject = () => {
+            let item = {};
+            item[localID] = {};
+            item[localID].data = data;
+            item[localID].callback = callback;
+            return item;
+        } 
+        this.queue.push(generateNewUploadObject());
+        
+        if (!this.isRunning) {
+            this.isRunning = true;
+            this.processNext();
+        }
+    }
+    
+    processNext(stopIfEmpty) {
+        if (this.queue.length != 0) {
+            this.callback(this.queue.shift());
+        } else if (!stopIfEmpty) {
+            setTimeout(() => {
+                this.processNext();
+            }, 100);
+        } else {
+            this.isRunning = false;
+        }
+    }
+}
+
+var tapUplQueue = new TapUploadQueue();
+
+tapUplQueue.setCallback((item) => {
+    let _item = item[Object.keys(item)]
+    this.tapCoreMessageManager.uploadChatFile(_item.data, _item.callback);
+});
+//queue upload file
 
 exports.tapCoreContactManager  = {
     getAllUserContacts : (callback) => {
