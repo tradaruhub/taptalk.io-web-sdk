@@ -1,4 +1,4 @@
-/* 14-08-2020 18:10  v1.8.2*/
+/* 14-08-2020 16:49  v1.8.3*/
 
 var define, CryptoJS;
 var crypto = require('crypto');
@@ -1416,7 +1416,7 @@ exports.tapCoreRoomListManager = {
                         callback.onSuccess(response.data);
                     }else {
                         _this.taptalk.checkErrorResponse(response, callback, () => {
-                            _this.tapCoreChatRoomManager.getRoomByXcID(xcRoomID, callback)
+                            _this.tapCoreRoomListManager.getRoomByXcID(xcRoomID, callback)
                         });
                     }
                 })
