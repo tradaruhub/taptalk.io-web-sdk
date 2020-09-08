@@ -1,4 +1,4 @@
-/* 14-08-2020 16:49  v1.8.3*/
+/* 08-09-2020 16:57  v1.8.4*/
 
 var define, CryptoJS;
 var crypto = require('crypto');
@@ -32,7 +32,7 @@ function addFileToDB(fileID, base64, fileType) {
 	
 	objectStoreRequest.onsuccess = function(event) {
 		if(!objectStoreRequest.result) {
-			let file = {file: base64, type: fileType, timestamp: DATE_NOW};
+			let file = {file: base64, type: fileType, timestamp: new Date().valueOf()};
 
 			store.add(file, fileID)
 		}
@@ -84,7 +84,7 @@ function deleteExpiredFileKey() {
 
         objectStoreRequest.onsuccess = function(event) {
             if(!objectStoreRequest.result) {
-                let file = {file: base64, type: fileType, timestamp: DATE_NOW};
+                let file = {file: base64, type: fileType, timestamp: new Date().valueOf()};
 
                 store.add(file, fileID)
             }
@@ -94,7 +94,7 @@ function deleteExpiredFileKey() {
             for(let i in objectKeyRequest.result) {
                 module.exports.tapCoreChatRoomManager.getFileFromDB(objectKeyRequest.result[i], function(data) {
                     //two weeks from now will be deleted
-                    if((DATE_NOW-data.timestamp) > 1576155138) {
+                    if((new Date().valueOf()-data.timestamp) > 1576155138) {
                         expiredKey.push(objectKeyRequest.result[i]);
                     }
                     
@@ -123,7 +123,6 @@ var authenticationHeader = {
 
 var baseApiUrl = "";
 var webSocket = null;
-const DATE_NOW = new Date().valueOf();
 
 const ROOM_TYPE = {
     PERSONAL: 1,
@@ -149,7 +148,7 @@ function bytesToSize(bytes) {
 function getDeviceID() {
 	let localDeviceID = localStorage.getItem('tapTalk.DeviceID');
 
-	let md5DeviceID = md5(navigator.userAgent + "@" + DATE_NOW);
+	let md5DeviceID = md5(navigator.userAgent + "@" + new Date().valueOf());
 
 	let generateDeviceID = md5DeviceID.substring(0, 16) + "-" + guid();
 
@@ -244,8 +243,8 @@ const MESSAGE_MODEL = {
     isDelivered: null,
     isRead: null,
     isDeleted: null,
-    created: DATE_NOW,
-    updated: DATE_NOW
+    created: new Date().valueOf(),
+    updated: new Date().valueOf()
 }
 
 function doXMLHTTPRequest(method, header, url, data, isMultipart= false) {
@@ -743,7 +742,7 @@ exports.taptalk = {
     getDeviceID : () => {
         let localDeviceID = localStorage.getItem('tapTalk.DeviceID');
 
-        let md5DeviceID = md5(navigator.userAgent + "@" + DATE_NOW);
+        let md5DeviceID = md5(navigator.userAgent + "@" + new Date().valueOf());
 
         let generateDeviceID = md5DeviceID.substring(0, 16) + "-" + guid();
 
