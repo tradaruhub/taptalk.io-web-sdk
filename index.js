@@ -1,4 +1,4 @@
-/* 08-09-2020 16:57  v1.8.4*/
+/* 08-09-2020 17:51  v1.8.5*/
 
 var define, CryptoJS;
 var crypto = require('crypto');
@@ -1997,7 +1997,9 @@ exports.tapCoreMessageManager  = {
         MESSAGE_MODEL["type"] = messageType;
         MESSAGE_MODEL["body"] = encryptKey(messageBody, localID !==null ? localID : guidVal);
         MESSAGE_MODEL["recipientID"] = generateRecipient();
-		MESSAGE_MODEL["data"] = generateData();
+        MESSAGE_MODEL["data"] = generateData();
+        MESSAGE_MODEL["created"] = new Date().valueOf();
+        MESSAGE_MODEL["updated"] = new Date().valueOf();
 		
 		//set room model
 		MESSAGE_MODEL["room"] = room;
@@ -2021,6 +2023,8 @@ exports.tapCoreMessageManager  = {
         MESSAGE_MODEL["quote"]["imageURL"] = quotedMessage.imageURL;
         MESSAGE_MODEL["quote"]["fileID"] = quotedMessage.fileID;
         MESSAGE_MODEL["quote"]["fileType"] = quotedMessage.fileType;
+        MESSAGE_MODEL["created"] = new Date().valueOf();
+        MESSAGE_MODEL["updated"] = new Date().valueOf();
         this.tapCoreMessageManager.constructMessageStatus(false, false, false, false);
     },
 
