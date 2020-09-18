@@ -1,4 +1,4 @@
-/* 08-09-2020 17:51  v1.8.5*/
+/* 18-09-2020 15:40  v1.8.6*/
 
 var define, CryptoJS;
 var crypto = require('crypto');
@@ -2000,7 +2000,6 @@ exports.tapCoreMessageManager  = {
         MESSAGE_MODEL["data"] = generateData();
         MESSAGE_MODEL["created"] = new Date().valueOf();
         MESSAGE_MODEL["updated"] = new Date().valueOf();
-		
 		//set room model
 		MESSAGE_MODEL["room"] = room;
 		//end of set room model
@@ -2126,7 +2125,7 @@ exports.tapCoreMessageManager  = {
             _message.body = body;
             _message.data = data;
         
-            this.tapCoreMessageManager.pushToTapTalkEmitMessageQueue(_message);
+            // this.tapCoreMessageManager.pushToTapTalkEmitMessageQueue(_message);
 
             this.tapCoreMessageManager.pushNewMessageToRoomsAndChangeLastMessage(_message);
 
@@ -2195,23 +2194,34 @@ exports.tapCoreMessageManager  = {
 
     sendLocationMessage : (latitude, longitude, address, room, callback) => {
         if(this.taptalk.isAuthenticated()) {
-            let data =  encryptKey(`
-                     {
-                         address = "${address}";
-                         latitude = "${latitude}";
-                         longitude = "${longitude}";
-                     }
-            `, guid())
+            let bodyValueLocation = `📍 Location`; 
+			let data =  {
+				userInfo: {
+					latitude: latitude,
+					longitude: longitude,
+					address: address
+				}
+			}
 
-            this.tapCoreMessageManager.constructTapTalkMessageModel("", room, CHAT_MESSAGE_TYPE_LOCATION, data);
-            this.tapCoreMessageManager.constructMessageStatus(true, false, false, false);
+            this.tapCoreMessageManager.constructTapTalkMessageModel(bodyValueLocation, room, CHAT_MESSAGE_TYPE_LOCATION, data);
 
             let emitData = {
                 eventName: SOCKET_NEW_MESSAGE,
                 data: MESSAGE_MODEL
-            };
-            
-            tapEmitMsgQueue.pushEmitQueue(JSON.stringify(emitData));
+			};
+			
+			let _message = {...MESSAGE_MODEL};
+			// tapEmitMsgQueue.pushEmitQueue(JSON.stringify(emitData));
+			
+            _message.body = bodyValueLocation;
+            _message.data = data;
+
+            // this.tapCoreMessageManager.pushToTapTalkEmitMessageQueue(_message);
+            this.tapCoreMessageManager.pushNewMessageToRoomsAndChangeLastMessage(_message);
+			
+			callback(_message);
+
+			tapEmitMsgQueue.pushEmitQueue(JSON.stringify(emitData));
         }
     },
 
