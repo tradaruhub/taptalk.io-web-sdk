@@ -1,4 +1,4 @@
-/* 18-09-2020 15:40  v1.8.6*/
+/* 22-09-2020 11:27  v1.8.7*/
 
 var define, CryptoJS;
 var crypto = require('crypto');
@@ -2196,11 +2196,9 @@ exports.tapCoreMessageManager  = {
         if(this.taptalk.isAuthenticated()) {
             let bodyValueLocation = `📍 Location`; 
 			let data =  {
-				userInfo: {
-					latitude: latitude,
-					longitude: longitude,
-					address: address
-				}
+                latitude: latitude,
+                longitude: longitude,
+                address: address			
 			}
 
             this.tapCoreMessageManager.constructTapTalkMessageModel(bodyValueLocation, room, CHAT_MESSAGE_TYPE_LOCATION, data);
