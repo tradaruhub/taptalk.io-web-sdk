@@ -1,4 +1,4 @@
-/* 22-09-2020 11:27  v1.8.7*/
+/* 26-10-2020 15:50  v1.8.8*/
 
 var define, CryptoJS;
 var crypto = require('crypto');
@@ -1968,7 +1968,43 @@ exports.tapCoreChatRoomManager = {
 		}else {
 			return null;
 		}
-	}
+    },
+    
+    getRoomMedia: (roomID, callback, minCreated = 0) => {
+		var url = `${baseApiUrl}/v1/chat/room/get_shared_content`;
+		var _this = this;
+		
+		let data = {
+			roomID: roomID,
+			minCreated: minCreated
+		};
+		
+        if(this.taptalk.isAuthenticated()) {
+			var userData = getLocalStorageObject('TapTalk.UserData');
+            authenticationHeader["Authorization"] = `Bearer ${userData.accessToken}`;
+            
+            doXMLHTTPRequest('POST', authenticationHeader, url, data)
+                .then(function (response) {
+					if(response.error.code === "") {
+						let resData = response.data;
+						Object.keys(resData).map((value) => {
+							resData[value].map((_value) => {
+								_value.data = JSON.parse(decryptKey(_value.data, _value.localID));
+							})
+						});
+
+						callback.onSuccess(resData);
+                    }else {
+                        _this.taptalk.checkErrorResponse(response, callback, () => {
+							_this.tapCoreChatRoomManager.getRoomMedia(data, callback)
+						});
+                    }
+                })
+                .catch(function (err) {
+                    console.error('there was an error!', err);
+                });
+        }
+	}	
 }
 
 exports.tapCoreMessageManager  = {
