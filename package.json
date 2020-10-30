@@ -1,15 +1,14 @@
 {
-  "name": "@taptalk.io/web-sdk",
-  "version": "1.8.8",
+  "name": "@tradaru/taptalk-sdk",
+  "version": "1.0.0",
   "description": "TapTalk.io Chat SDK for Web",
-  "homepage": "https://taptalk.io",
   "main": "index.js",
   "directories": {
     "lib": "lib"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/taptalk-io/taptalk.io-web-sdk.git"
+    "url": "git+https://github.com/tradaruhub/taptalk.io-web-sdk.git"
   },
   "author": "",
   "license": "MIT",
