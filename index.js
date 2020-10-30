@@ -3,6 +3,8 @@
 var define, CryptoJS;
 var crypto = require('crypto');
 var md5 = require('./lib/md5');
+const { groupBy } = require('./lib/util');
+
 var tapTalkRooms = {}; //room list with array of messages
 var tapTalkRoomListHashmap = {}; //room list last message
 // var tapTalkEmitMessageQueue = {}; //room list undelivered message
@@ -2806,25 +2808,40 @@ exports.tapCoreMessageManager  = {
 					doXMLHTTPRequest('POST', authenticationHeader, url, data)
 						.then(function (response) {
 							if(response.error.code === "") {
-								tapTalkRooms[roomID].hasMore = response.data.hasMore;
-								for(var i in response.data.messages) {
-									response.data.messages[i].body = decryptKey(response.data.messages[i].body, response.data.messages[i].localID);
+                                const hasMore = response.data.hasMore;
+                                const messages = response.data.messages.map((message) => {
+                                    const body = decryptKey(message.body, message.localID);
 
-									if((response.data.messages[i].data !== "") && !response.data.messages[i].isDeleted) {
-										var messageIndex = response.data.messages[i];
-										messageIndex.data = JSON.parse(decryptKey(messageIndex.data, messageIndex.localID));
-									}
+                                    let data = (message.data !== '' && !message.isDeleted)
+                                        ? JSON.parse(decryptKey(message.data, message.localID))
+                                        : message.data;
 
-									if(response.data.messages[i].replyTo.localID !== "") {
-										var messageIndex = response.data.messages[i];
-										messageIndex.quote.content = decryptKey(messageIndex.quote.content, messageIndex.localID)
-									}
-									
-									tapTalkRooms[roomID].messages[response.data.messages[i].localID] = response.data.messages[i];
-								}
-								
-								tapTalkRooms[roomID].hasMore = response.data.hasMore;
-								callback.onSuccess(tapTalkRooms[roomID].messages, response.data.hasMore);
+                                    let content = (message.replyTo.localID !== '')
+                                        ? decryptKey(message.quote.content, message.localID)
+                                        : message.quote.content;
+
+                                    return {
+                                        ...message,
+                                        data,
+                                        quote: {
+                                            ...message.quote,
+                                            content,
+                                        },
+                                    };
+                                });
+
+                                const mergeWithExistingMessage = {
+                                    ...tapTalkRooms[roomID],
+                                    messages: {
+                                        ...tapTalkRooms[roomID].messages,
+                                        ...groupBy(messages),
+                                    },
+                                    hasMore,
+                                };
+
+                                tapTalkRooms[roomID] = mergeWithExistingMessage;
+                                
+								callback.onSuccess(mergeWithExistingMessage, response.data.hasMore);
 							}else {
                                 _this.taptalk.checkErrorResponse(response, callback, () => {
                                     _this.tapCoreMessageManager.getOlderMessagesBeforeTimestamp(roomID, numberOfItems, callback)
