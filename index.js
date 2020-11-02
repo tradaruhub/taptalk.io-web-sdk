@@ -22,7 +22,7 @@ var isNeedToCallApiUpdateRoomList = true;
 let isFirstConnectedToWebSocket = false;
 
 var db;
-window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+Object.defineProperty(window, 'indexedDB', window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB);
 
 //initiate index db for local file(image, video, file)
 function addFileToDB(fileID, base64, fileType) {
