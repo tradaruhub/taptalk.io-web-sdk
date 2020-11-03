@@ -2047,7 +2047,7 @@ exports.tapCoreMessageManager = {
   },
 
   constructTapTalkMessageModelWithQuote: (messageBody, room, messageType, messageData, quotedMessage) => {
-    let roomSplit = room.split("-");
+    let roomSplit = room.roomID.split("-");
     let recipient = roomSplit[0] === this.taptalk.getTaptalkActiveUser().userID ? roomSplit[1] : roomSplit[0];
     MESSAGE_MODEL["user"] = this.taptalk.getTaptalkActiveUser();
     MESSAGE_MODEL["type"] = messageType;
