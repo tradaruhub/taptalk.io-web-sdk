@@ -1,10 +1,8 @@
 /* 26-10-2020 15:50  v1.8.8*/
 
-var define, CryptoJS;
 var md5 = require('./lib/md5');
-const { groupBy } = require('./lib/util');
-const crypto = require('crypto-js');
-var AES256 = require('aes-everywhere');
+const { groupBy, safeJSON } = require('./lib/util');
+const crypto = require('./lib/cryptor');
 
 var tapTalkRooms = {}; //room list with array of messages
 var tapTalkRoomListHashmap = {}; //room list last message
@@ -277,7 +275,7 @@ function doXMLHTTPRequest(method, header, url, data, isMultipart = false) {
 
     xhr.onload = function () {
       if (xhr.status === 200) {
-        resolve(JSON.parse(xhr.response));
+        resolve(safeJSON(xhr.response));
       } else {
         reject({
           status: xhr.status,
@@ -338,7 +336,7 @@ function doXMLHTTPRequestToBase64(method, header, url, data, message, onProgress
 
         if (xhrBase64.getResponseHeader('content-type') === "application/json") {
           var enc = new TextDecoder("utf-8");
-          resolve(JSON.parse(enc.decode(xhrBase64.response)));
+          resolve(safeJSON(enc.decode(xhrBase64.response)));
         } else {
           resolve({
             base64: convertToBase64(),
@@ -385,7 +383,7 @@ function doXMLHTTPRequestUpload(method, header, url, data, onProgress) {
 
     xhrUpload.onload = function () {
       if (xhrUpload.status === 200) {
-        resolve(JSON.parse(xhrUpload.response));
+        resolve(safeJSON(xhrUpload.response));
       } else {
         reject({
           status: xhrUpload.status,
@@ -404,7 +402,7 @@ function doXMLHTTPRequestUpload(method, header, url, data, onProgress) {
 }
 
 function getLocalStorageObject(storage) {
-  return JSON.parse(decryptKey(localStorage.getItem(storage), KEY_PASSWORD_ENCRYPTOR));
+  return safeJSON(decryptKey(localStorage.getItem(storage), KEY_PASSWORD_ENCRYPTOR));
 }
 
 function generateHeaderQuerystring() {
@@ -458,7 +456,7 @@ var tapReader = new FileReader();
 tapReader.onload = function () {
   var messages = this.result.split('\n');
   for (let i in messages) {
-    var m = JSON.parse(messages[i]);
+    var m = safeJSON(messages[i]);
 
     handleEmit(m);
 
@@ -532,7 +530,7 @@ var handleNewMessage = (message) => {
   message.body = decryptKey(message.body, message.localID);
 
   if (message.data !== "") {
-    message.data = JSON.parse(decryptKey(message.data, message.localID));
+    message.data = safeJSON(decryptKey(message.data, message.localID));
   }
 
   if (message.replyTo.localID !== "") {
@@ -587,7 +585,7 @@ var handleUpdateMessage = (message) => {
   message.body = decryptKey(message.body, message.localID);
 
   if (message.data !== "") {
-    message.data = JSON.parse(decryptKey(message.data, message.localID));
+    message.data = safeJSON(decryptKey(message.data, message.localID));
   }
 
   if (message.replyTo.localID !== "") {
@@ -779,7 +777,9 @@ exports.taptalk = {
   checkErrorResponse: (response, callbackOnMethod = null, callbackAfterRefresh = null) => {
     if (response.status !== 200) {
       if (response.status === 401) {
-        if (response.error.code === "40104") {
+        if (response.error.code === "40103") {
+          this.taptalk.refreshAccessToken(callbackAfterRefresh);
+        } else if (response.error.code === "40104") {
           this.taptalk.refreshAccessToken(callbackAfterRefresh);
         } else {
           refreshAccessTokenCallbackArray = [];
@@ -1244,7 +1244,7 @@ exports.tapCoreRoomListManager = {
     _localIDNewMessage.body = decryptedMessage;
 
     if (_localIDNewMessage.data !== "") {
-      _localIDNewMessage.data = JSON.parse(decryptKey(_localIDNewMessage.data, _localIDNewMessage.localID));
+      _localIDNewMessage.data = safeJSON(decryptKey(_localIDNewMessage.data, _localIDNewMessage.localID));
     }
 
     //room list action
@@ -1270,7 +1270,7 @@ exports.tapCoreRoomListManager = {
     localIDNewMessage.body = decryptedMessage;
 
     if ((localIDNewMessage.data !== "") && !localIDNewMessage.isDeleted) {
-      localIDNewMessage.data = JSON.parse(decryptKey(localIDNewMessage.data, localIDNewMessage.localID));
+      localIDNewMessage.data = safeJSON(decryptKey(localIDNewMessage.data, localIDNewMessage.localID));
     }
 
     //room list action
@@ -2006,7 +2006,7 @@ exports.tapCoreChatRoomManager = {
             let resData = response.data;
             Object.keys(resData).map((value) => {
               resData[value].map((_value) => {
-                _value.data = JSON.parse(decryptKey(_value.data, _value.localID));
+                _value.data = safeJSON(decryptKey(_value.data, _value.localID));
               })
             });
 
@@ -2826,9 +2826,8 @@ exports.tapCoreMessageManager = {
                 const hasMore = response.data.hasMore;
                 const messages = response.data.messages.map((message) => {
                   const body = decryptKey(message.body, message.localID);
-
                   let data = (message.data !== '' && !message.isDeleted)
-                    ? JSON.parse(decryptKey(message.data, message.localID))
+                    ? safeJSON(decryptKey(message.data, message.localID))
                     : message.data;
 
                   let content = (message.replyTo.localID !== '')
@@ -2909,7 +2908,7 @@ exports.tapCoreMessageManager = {
               if (responseMessage[i].data !== "") {
                 var messageIndex = responseMessage[i];
                 if (typeof messageIndex.data === "string") {
-                  messageIndex.data = JSON.parse(decryptKey(messageIndex.data, messageIndex.localID));
+                  messageIndex.data = safeJSON(decryptKey(messageIndex.data, messageIndex.localID));
                 }
               }
 
@@ -3278,12 +3277,12 @@ exports.tapCoreContactManager = {
 }
 
 function encrypt(text, key) {
-  return AES256.encrypt(typeof text === 'string' ? text : JSON.stringify(text), key);
+  return crypto.encrypt(typeof text === 'string' ? text : JSON.stringify(text), key).toString();
 };
 
 function decrypt(text, key) {
   try {
-    return AES256.decrypt(text, key);
+    return crypto.decrypt(text, key);
   } catch (error) {
     return null;
   }
