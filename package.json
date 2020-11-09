@@ -21,5 +21,9 @@
     "taptalk.io",
     "chat",
     "sdk"
-  ]
+  ],
+  "dependencies": {
+    "aes-everywhere": "^1.0.0",
+    "crypto-js": "^4.0.0"
+  }
 }

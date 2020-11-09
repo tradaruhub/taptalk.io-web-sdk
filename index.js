@@ -1,9 +1,10 @@
 /* 26-10-2020 15:50  v1.8.8*/
 
 var define, CryptoJS;
-var crypto = require('crypto');
 var md5 = require('./lib/md5');
 const { groupBy } = require('./lib/util');
+const crypto = require('crypto-js');
+var AES256 = require('aes-everywhere');
 
 var tapTalkRooms = {}; //room list with array of messages
 var tapTalkRoomListHashmap = {}; //room list last message
@@ -3276,102 +3277,26 @@ exports.tapCoreContactManager = {
   }
 }
 
-//   //to encrypt and decrypt
-var PKCS7Encoder = {};
-
-PKCS7Encoder.decode = function (text) {
-  var pad = text[text.length - 1];
-
-  if (pad < 1 || pad > 16) {
-    pad = 0;
-  }
-
-  return text.slice(0, text.length - pad);
-};
-
-PKCS7Encoder.encode = function (text) {
-  var blockSize = 16;
-  var textLength = text.length;
-  var amountToPad = blockSize - (textLength % blockSize);
-
-  var result = new Buffer(amountToPad);
-  result.fill(amountToPad);
-
-  return Buffer.concat([text, result]);
-};
-
 function encrypt(text, key) {
-  var encoded = PKCS7Encoder.encode(new Buffer(text));
-  key = crypto.createHash('sha256').update(key).digest();
-  var iv = new Buffer(16);
-  iv.fill(0);
-  var cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-  cipher.setAutoPadding(false);
-  var cipheredMsg = Buffer.concat([cipher.update(encoded), cipher.final()]);
-  return cipheredMsg.toString('base64');
+  return AES256.encrypt(typeof text === 'string' ? text : JSON.stringify(text), key);
 };
 
 function decrypt(text, key) {
-  key = crypto.createHash('sha256').update(key).digest();
-  var iv = new Buffer(16);
-  iv.fill(0);
-  var decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  decipher.setAutoPadding(false);
-  var deciphered = Buffer.concat([decipher.update(text, 'base64'), decipher.final()]);
-  deciphered = PKCS7Encoder.decode(deciphered);
-  return deciphered.toString();
+  try {
+    return AES256.decrypt(text, key);
+  } catch (error) {
+    return null;
+  }
 };
-//   //to encrypt and decrypt
-
-//   //Encryption Flow
-//   // 1. Obtain message length, local ID length
-//   // 2. Get local ID index (message length modulo by local ID length)
-//   // 3. Generate random number from 1-9
-//   // 4. Obtain salt character from local ID string with character position of local ID index
-//   // 5. Insert salt character to encrypted message to the position index (index is calculated using this formula (((encrypted message length + random number) * random number) % encrypted message length)))
-//   // 6. Add random number to the first index of the encrypted message with salt
 
 function encryptKey(text, localID) {
   if (text === null || localID === null) {
     return null;
   }
 
-  let substringLocalID = localID.substring(8, 8 + 16);
-  let reverseSubstringLocalID = "";
-  let appendedString = "";
-  let charIndex = substringLocalID.length;
+  const encrypted = encrypt(text, localID);
 
-  while (charIndex > 0) {
-    charIndex--;
-    appendedString = null;
-    appendedString = substringLocalID.substring(charIndex, charIndex + 1);
-    reverseSubstringLocalID = reverseSubstringLocalID + appendedString;
-  }
-
-  //password is generated based on 16 first characters of KEY_PASSWORD_ENCRYPTOR + reversedSubstringLocalID
-  let substringKeyPassword = KEY_PASSWORD_ENCRYPTOR.substring(0, 16);
-  let password = substringKeyPassword + reverseSubstringLocalID;
-
-  let stringLength = text.length;
-  let localIDLength = localID.length;
-  let localIDIndex = stringLength % localIDLength;
-
-  let saltString = localID.substring(localIDIndex, localIDIndex + 1);
-  let encryptedString = encrypt(text, password);
-
-  let randomNumber = Math.floor(Math.random() * 8) + 1;
-  let encryptedStringLength = encryptedString.length;
-
-  let saltCharIndexPosition = (((encryptedStringLength + randomNumber) * randomNumber) % encryptedStringLength);
-  let encryptedStringWithSalt = encryptedString;
-
-  let appendString = (str, index, value) => {
-    return str.substr(0, index) + value + str.substr(index);
-  }
-  encryptedStringWithSalt = appendString(encryptedStringWithSalt, saltCharIndexPosition, saltString);
-  encryptedStringWithSalt = appendString(encryptedStringWithSalt, 0, randomNumber.toString());
-
-  return encryptedStringWithSalt;
+  return encrypted;
 }
 
 function decryptKey(encryptedString, localID) {
@@ -3379,38 +3304,7 @@ function decryptKey(encryptedString, localID) {
     return null;
   }
 
-  let substringLocalID = localID.substring(8, 8 + 16);
-  let reverseSubstringLocalID = "";
-  let appendedString;
-  let charIndex = substringLocalID.length;
+  const decrypted = decrypt(encryptedString, localID);
 
-  while (charIndex > 0) {
-    charIndex--;
-    appendedString = null;
-    appendedString = substringLocalID.substring(charIndex, charIndex + 1);
-    reverseSubstringLocalID = reverseSubstringLocalID + appendedString;
-  }
-
-  //password is generated based on 16 first characters of KEY_PASSWORD_ENCRYPTOR + reversedSubstringLocalID
-  let substringKeyPassword = KEY_PASSWORD_ENCRYPTOR.substring(0, 16);
-  let password = substringKeyPassword + reverseSubstringLocalID;
-
-  let encryptedStringWithSalt = encryptedString;
-  let encryptedStringLength = encryptedStringWithSalt.length - 2; //2 to remove random number & salt character
-
-  let randomNumberString = encryptedStringWithSalt.substring(0, 1);
-  let randomNumber = parseInt(randomNumberString);
-
-  let saltCharIndexPosition = (((encryptedStringLength + randomNumber) * randomNumber) % encryptedStringLength);
-  let encryptedStringModified = encryptedStringWithSalt.substr(1);
-
-  if (saltCharIndexPosition < encryptedStringModified.length) {
-    encryptedStringModified = encryptedStringModified.substring(0, saltCharIndexPosition) + '' + encryptedStringModified.substring(saltCharIndexPosition + 1);
-  } else {
-    return null;
-  }
-
-  let decryptedString = decrypt(encryptedStringModified, password);
-
-  return decryptedString
+  return decrypted;
 }
