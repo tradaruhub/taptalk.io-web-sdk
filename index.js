@@ -2,7 +2,7 @@
 
 var md5 = require('./lib/md5');
 const { groupBy, safeJSON } = require('./lib/util');
-const crypto = require('./lib/cryptor');
+const crypto = require('./lib/simple-cryptor');
 
 var tapTalkRooms = {}; //room list with array of messages
 var tapTalkRoomListHashmap = {}; //room list last message
