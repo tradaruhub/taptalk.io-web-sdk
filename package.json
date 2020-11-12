@@ -1,6 +1,6 @@
 {
   "name": "@tradaru/taptalk-sdk",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "TapTalk.io Chat SDK for Web",
   "main": "index.js",
   "directories": {
